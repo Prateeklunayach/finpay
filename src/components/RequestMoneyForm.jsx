@@ -1,17 +1,56 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
-const RequestMoneyForm = ({ onClose, onRequest, balance }) => {
+const RequestMoneyForm = ({ onClose, onRequest }) => {
   const [amount, setAmount] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isWebAuthnSupported, setIsWebAuthnSupported] = useState(false);
+
+  useEffect(() => {
+    // Check if WebAuthn is supported
+    if (window.PublicKeyCredential) {
+      setIsWebAuthnSupported(true);
+    }
+  }, []);
+
+  const getFingerprint = async () => {
+    try {
+      // Request fingerprint authentication
+      const publicKeyCredentialRequestOptions = {
+        challenge: new Uint8Array([/* challenge from server */]),
+        allowCredentials: [],
+        userVerification: 'required',
+        timeout: 60000,
+      };
+
+      // Start fingerprint authentication
+      const assertion = await navigator.credentials.get({
+        publicKey: publicKeyCredentialRequestOptions
+      });
+
+      return {
+        id: assertion.id,
+        rawId: Array.from(new Uint8Array(assertion.rawId)),
+        type: assertion.type,
+        response: {
+          authenticatorData: Array.from(new Uint8Array(assertion.response.authenticatorData)),
+          clientDataJSON: Array.from(new Uint8Array(assertion.response.clientDataJSON)),
+          signature: Array.from(new Uint8Array(assertion.response.signature)),
+          userHandle: assertion.response.userHandle ? Array.from(new Uint8Array(assertion.response.userHandle)) : null
+        }
+      };
+    } catch (error) {
+      console.error('Fingerprint error:', error);
+      throw new Error('Fingerprint authentication failed. Please try again.');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setIsLoading(true);
+    setIsAuthenticating(true);
 
     try {
       // Get user data and token from localStorage
@@ -30,71 +69,72 @@ const RequestMoneyForm = ({ onClose, onRequest, balance }) => {
         throw new Error('Please enter a valid amount');
       }
 
-      // Show fingerprint authentication dialog
-      setIsAuthenticating(true);
-      
-      try {
-        // Here you would integrate with your actual fingerprint authentication API
-        // For now, we'll simulate the fingerprint authentication with a delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // After successful fingerprint authentication, proceed with payment
-        const requestBody = {
+      // Get fingerprint authentication
+      let fingerprintData = null;
+      if (isWebAuthnSupported) {
+        setIsAuthenticating(true);
+        try {
+          fingerprintData = await getFingerprint();
+          console.log('Fingerprint authenticated:', fingerprintData);
+        } catch (error) {
+          throw new Error('Fingerprint authentication failed. Please try again.');
+        }
+      } else {
+        throw new Error('Biometric authentication is not supported on this device.');
+      }
+
+      // Prepare request body
+      const requestBody = {
+        amount: parseFloat(amount),
+        merchantId: userData.id,
+        fingerprintData: fingerprintData,
+        type: 'payment'
+      };
+
+      console.log('Sending payment request with data:', requestBody);
+
+      // Send request to Replit server
+      const baseUrl = 'https://da18cb3d-90d8-4e21-b63e-19d719f06fcf-00-321o5acwph97q.sisko.replit.dev:3001';
+      const endpoint = `${baseUrl}/api/payment/initiate`;
+
+      console.log('Sending request to:', endpoint);
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to initiate payment');
+      }
+
+      const data = await response.json();
+      console.log('Payment initiation response:', data);
+
+      if (data.success) {
+        setSuccessMessage('Payment request initiated successfully!');
+        setAmount('');
+        onRequest({
           amount: parseFloat(amount),
           merchantId: userData.id,
-          fingerprintData: 'authenticated', // This should be replaced with actual fingerprint data
-          type: 'payment'
-        };
-
-        console.log('Sending payment request with data:', requestBody);
-
-        // Use Replit URL
-        const baseUrl = 'https://da18cb3d-90d8-4e21-b63e-19d719f06fcf-00-321o5acwph97q.sisko.replit.dev:3001';
-        const endpoint = `${baseUrl}/api/payment/initiate`;
-
-        console.log('Sending request to:', endpoint);
-
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(requestBody)
+          timestamp: new Date().toISOString(),
+          status: 'completed',
+          type: 'request'
         });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to initiate payment');
-        }
-
-        const data = await response.json();
-        console.log('Payment initiation response:', data);
-
-        if (data.success) {
-          setSuccessMessage('Payment request initiated successfully!');
-          setAmount('');
-          onRequest({
-            amount: parseFloat(amount),
-            merchantId: userData.id,
-            timestamp: new Date().toISOString(),
-            status: 'completed',
-            type: 'request'
-          });
-          onClose();
-        } else {
-          throw new Error(data.message || 'Failed to initiate payment');
-        }
-      } catch (authError) {
-        throw new Error('Fingerprint authentication failed. Please try again.');
-      } finally {
-        setIsAuthenticating(false);
+        onClose();
+      } else {
+        throw new Error(data.message || 'Failed to initiate payment');
       }
     } catch (err) {
       console.error('Payment error:', err);
       setError(err.message);
     } finally {
-      setIsLoading(false);
+      setIsAuthenticating(false);
     }
   };
 
@@ -148,14 +188,20 @@ const RequestMoneyForm = ({ onClose, onRequest, balance }) => {
             </div>
           )}
 
+          {!isWebAuthnSupported && (
+            <div className="text-yellow-600 text-sm bg-yellow-50 p-3 rounded-lg">
+              Warning: Biometric authentication is not supported on this device.
+            </div>
+          )}
+
           <div className="flex items-center justify-center">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               type="submit"
-              disabled={isLoading || isAuthenticating}
+              disabled={isAuthenticating}
               className={`w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                (isLoading || isAuthenticating)
+                isAuthenticating
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
               }`}
@@ -171,7 +217,7 @@ const RequestMoneyForm = ({ onClose, onRequest, balance }) => {
               ) : (
                 <>
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
                   </svg>
                   Pay with Fingerprint
                 </>
