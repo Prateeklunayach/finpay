@@ -45,107 +45,91 @@ const AuthForm = ({ onAuth }) => {
     try {
       validateForm();
 
-      // Try different URL formats, starting with localhost
-      const urls = [
-        'http://localhost:5004',
-        'https://da18cb3d-90d8-4e21-b63e-19d719f06fcf-00-321o5acwph97q.sisko.replit.dev:3001'
-      ];
+      // Use Replit server
+      const baseUrl = 'https://7f232dcf-3548-4d4c-993c-b03b7c310acc-00-lallfd7bfikh.sisko.replit.dev';
+      const endpoint = isLogin 
+        ? `${baseUrl}/api/merchants/login`
+        : `${baseUrl}/api/merchants/register`;
 
-      let lastError = null;
-      for (const baseUrl of urls) {
+      console.log('Sending request to:', endpoint);
+      console.log('Request data:', isLogin 
+        ? { username: formData.username, password: formData.password }
+        : formData
+      );
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(isLogin 
+          ? { username: formData.username, password: formData.password }
+          : formData
+        ),
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response text:', errorText);
+        let errorData;
         try {
-          const endpoint = isLogin 
-            ? `${baseUrl}/api/merchants/login`
-            : `${baseUrl}/api/merchants/register`;
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { message: errorText };
+        }
 
-          console.log('Trying endpoint:', endpoint);
-          console.log('Request data:', isLogin 
-            ? { username: formData.username, password: formData.password }
-            : formData
-          );
-
-          const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify(isLogin 
-              ? { username: formData.username, password: formData.password }
-              : formData
-            ),
-          });
-
-          console.log('Response status:', response.status);
-          console.log('Response headers:', response.headers);
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Error response text:', errorText);
-            let errorData;
-            try {
-              errorData = JSON.parse(errorText);
-            } catch (e) {
-              errorData = { message: errorText };
-            }
-
-            // Handle specific error cases
-            if (errorData.error === 'secretOrPrivateKey must have a value') {
-              throw new Error('Server configuration error. Please try again later or contact support.');
-            } else if (response.status === 500) {
-              throw new Error('Server error. Please try again later.');
-            } else if (response.status === 401) {
-              throw new Error('Invalid username or password.');
-            } else {
-              throw new Error(errorData.message || `Authentication failed with status ${response.status}`);
-            }
-          }
-
-          const data = await response.json();
-          console.log('Auth response:', data);
-
-          if (data.message === 'Login successful' || data.success) {
-            if (isLogin) {
-              // Store the actual token from the server
-              localStorage.setItem('token', data.token);
-              localStorage.setItem('user', JSON.stringify(data.merchant));
-              onAuth(data.merchant);
-            } else {
-              // For registration, create a mock token and store user data
-              const mockToken = `mock_token_${data.merchantId}`;
-              localStorage.setItem('token', mockToken);
-              localStorage.setItem('user', JSON.stringify({
-                id: data.merchantId,
-                username: formData.username,
-                name: formData.name,
-                email: formData.email,
-                upiId: formData.upiId,
-                accountNumber: formData.accountNumber,
-                ifscCode: formData.ifscCode
-              }));
-              onAuth({
-                id: data.merchantId,
-                username: formData.username,
-                name: formData.name,
-                email: formData.email,
-                upiId: formData.upiId,
-                accountNumber: formData.accountNumber,
-                ifscCode: formData.ifscCode
-              });
-            }
-            return; // Success, exit the loop
-          } else {
-            throw new Error(data.message || 'Authentication failed');
-          }
-        } catch (err) {
-          console.error(`Error with URL ${baseUrl}:`, err);
-          lastError = err;
-          // Continue to next URL
+        // Handle specific error cases
+        if (errorData.error === 'secretOrPrivateKey must have a value') {
+          throw new Error('Server configuration error. Please try again later or contact support.');
+        } else if (response.status === 500) {
+          throw new Error('Server error. Please try again later.');
+        } else if (response.status === 401) {
+          throw new Error('Invalid username or password.');
+        } else {
+          throw new Error(errorData.message || `Authentication failed with status ${response.status}`);
         }
       }
 
-      // If we get here, all URLs failed
-      throw lastError || new Error('All connection attempts failed. Please check if the server is running.');
+      const data = await response.json();
+      console.log('Auth response:', data);
+
+      if (data.message === 'Login successful' || data.success) {
+        if (isLogin) {
+          // Store the actual token from the server
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.merchant));
+          onAuth(data.merchant);
+        } else {
+          // For registration, create a mock token and store user data
+          const mockToken = `mock_token_${data.merchantId}`;
+          localStorage.setItem('token', mockToken);
+          localStorage.setItem('user', JSON.stringify({
+            id: data.merchantId,
+            username: formData.username,
+            name: formData.name,
+            email: formData.email,
+            upiId: formData.upiId,
+            accountNumber: formData.accountNumber,
+            ifscCode: formData.ifscCode
+          }));
+          onAuth({
+            id: data.merchantId,
+            username: formData.username,
+            name: formData.name,
+            email: formData.email,
+            upiId: formData.upiId,
+            accountNumber: formData.accountNumber,
+            ifscCode: formData.ifscCode
+          });
+        }
+        return; // Success, exit the loop
+      } else {
+        throw new Error(data.message || 'Authentication failed');
+      }
     } catch (err) {
       console.error('Auth error:', err);
       setError(err.message);

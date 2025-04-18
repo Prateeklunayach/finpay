@@ -35,7 +35,7 @@ const PaymentForm = ({ onPaymentSuccess, balance }) => {
       }
 
       // Send payment initiation request
-      const response = await fetch('https://da18cb3d-90d8-4e21-b63e-19d719f06fcf-00-321o5acwph97q.sisko.replit.dev:3001/api/payment/initiate', {
+      const response = await fetch('https://7f232dcf-3548-4d4c-993c-b03b7c310acc-00-lallfd7bfikh.sisko.replit.dev/api/payment/initiate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
