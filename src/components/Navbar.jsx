@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 
-const Navbar = () => {
+const Navbar = ({ user, onLogout }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const location = useLocation();
@@ -27,104 +27,123 @@ const Navbar = () => {
                 FinPay
               </Link>
             </motion.div>
+            {user && (
+              <div className="hidden md:block">
+                <div className="ml-10 flex items-baseline space-x-4">
+                  {navLinks.map((link) => (
+                    <motion.div
+                      key={link.name}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Link
+                        to={link.path}
+                        className={`${
+                          location.pathname === link.path
+                            ? 'bg-white/50 text-gray-900'
+                            : 'text-gray-700 hover:text-gray-900 hover:bg-white/30'
+                        } px-3 py-2 rounded-md text-sm font-medium flex items-center transition-colors duration-200`}
+                      >
+                        <svg
+                          className="h-5 w-5 mr-2"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d={link.icon}
+                          />
+                        </svg>
+                        {link.name}
+                      </Link>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          {user ? (
             <div className="hidden md:block">
-              <div className="ml-10 flex items-baseline space-x-4">
-                {navLinks.map((link) => (
+              <div className="ml-4 flex items-center md:ml-6">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-white/50 text-gray-700 px-4 py-2 rounded-md text-sm font-medium mr-4 hover:bg-white/70 transition-colors duration-200"
+                >
+                  Support
+                </motion.button>
+                <div className="ml-3 relative">
                   <motion.div
-                    key={link.name}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <Link
-                      to={link.path}
-                      className={`${
-                        location.pathname === link.path
-                          ? 'bg-white/50 text-gray-900'
-                          : 'text-gray-700 hover:text-gray-900 hover:bg-white/30'
-                      } px-3 py-2 rounded-md text-sm font-medium flex items-center transition-colors duration-200`}
+                    <button
+                      onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                      className="max-w-xs bg-white/50 rounded-full flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white/30 focus:ring-gray-500"
                     >
-                      <svg
-                        className="h-5 w-5 mr-2"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d={link.icon}
-                        />
-                      </svg>
-                      {link.name}
-                    </Link>
+                      <span className="sr-only">Open user menu</span>
+                      <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                        <span className="text-indigo-800 font-medium">
+                          {user.name ? user.name[0].toUpperCase() : 'U'}
+                        </span>
+                      </div>
+                    </button>
                   </motion.div>
-                ))}
+                  <AnimatePresence>
+                    {isUserMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white/80 backdrop-blur-sm ring-1 ring-black ring-opacity-5"
+                      >
+                        <div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-200">
+                          <p className="font-medium">{user.name}</p>
+                          <p className="text-gray-500">{user.email}</p>
+                        </div>
+                        <motion.a
+                          whileHover={{ scale: 1.02 }}
+                          href="#"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-white/50"
+                        >
+                          Your Profile
+                        </motion.a>
+                        <motion.a
+                          whileHover={{ scale: 1.02 }}
+                          href="#"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-white/50"
+                        >
+                          Settings
+                        </motion.a>
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          onClick={onLogout}
+                          className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-white/50"
+                        >
+                          Sign out
+                        </motion.button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="hidden md:block">
-            <div className="ml-4 flex items-center md:ml-6">
+          ) : (
+            <div className="hidden md:block">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-white/50 text-gray-700 px-4 py-2 rounded-md text-sm font-medium mr-4 hover:bg-white/70 transition-colors duration-200"
+                onClick={() => window.location.href = '/'}
+                className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors duration-200"
               >
-                Support
+                Login / Sign Up
               </motion.button>
-              <div className="ml-3 relative">
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <button
-                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                    className="max-w-xs bg-white/50 rounded-full flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white/30 focus:ring-gray-500"
-                  >
-                    <span className="sr-only">Open user menu</span>
-                    <img
-                      className="h-8 w-8 rounded-full"
-                      src="https://ui-avatars.com/api/?name=User&background=random"
-                      alt=""
-                    />
-                  </button>
-                </motion.div>
-                <AnimatePresence>
-                  {isUserMenuOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white/80 backdrop-blur-sm ring-1 ring-black ring-opacity-5"
-                    >
-                      <motion.a
-                        whileHover={{ scale: 1.02 }}
-                        href="#"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-white/50"
-                      >
-                        Your Profile
-                      </motion.a>
-                      <motion.a
-                        whileHover={{ scale: 1.02 }}
-                        href="#"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-white/50"
-                      >
-                        Settings
-                      </motion.a>
-                      <motion.a
-                        whileHover={{ scale: 1.02 }}
-                        href="#"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-white/50"
-                      >
-                        Sign out
-                      </motion.a>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
             </div>
-          </div>
+          )}
           <div className="-mr-2 flex md:hidden">
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -160,78 +179,93 @@ const Navbar = () => {
             exit={{ opacity: 0, height: 0 }}
             className="md:hidden"
           >
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-              {navLinks.map((link) => (
-                <motion.div
-                  key={link.name}
+            {user ? (
+              <>
+                <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                  {navLinks.map((link) => (
+                    <motion.div
+                      key={link.name}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Link
+                        to={link.path}
+                        className={`${
+                          location.pathname === link.path
+                            ? 'bg-white/50 text-gray-900'
+                            : 'text-gray-700 hover:text-gray-900 hover:bg-white/30'
+                        } block px-3 py-2 rounded-md text-base font-medium flex items-center transition-colors duration-200`}
+                      >
+                        <svg
+                          className="h-5 w-5 mr-2"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d={link.icon}
+                          />
+                        </svg>
+                        {link.name}
+                      </Link>
+                    </motion.div>
+                  ))}
+                </div>
+                <div className="pt-4 pb-3 border-t border-white/30">
+                  <div className="flex items-center px-5">
+                    <div className="flex-shrink-0">
+                      <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                        <span className="text-indigo-800 font-medium">
+                          {user.name ? user.name[0].toUpperCase() : 'U'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="ml-3">
+                      <div className="text-base font-medium text-gray-900">{user.name}</div>
+                      <div className="text-sm font-medium text-gray-500">{user.email}</div>
+                    </div>
+                  </div>
+                  <div className="mt-3 px-2 space-y-1">
+                    <motion.a
+                      whileHover={{ scale: 1.05 }}
+                      href="#"
+                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-white/30"
+                    >
+                      Your Profile
+                    </motion.a>
+                    <motion.a
+                      whileHover={{ scale: 1.05 }}
+                      href="#"
+                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-white/30"
+                    >
+                      Settings
+                    </motion.a>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      onClick={onLogout}
+                      className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-white/30"
+                    >
+                      Sign out
+                    </motion.button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  onClick={() => window.location.href = '/'}
+                  className="w-full bg-indigo-600 text-white px-4 py-2 rounded-md text-base font-medium hover:bg-indigo-700 transition-colors duration-200"
                 >
-                  <Link
-                    to={link.path}
-                    className={`${
-                      location.pathname === link.path
-                        ? 'bg-white/50 text-gray-900'
-                        : 'text-gray-700 hover:text-gray-900 hover:bg-white/30'
-                    } block px-3 py-2 rounded-md text-base font-medium flex items-center transition-colors duration-200`}
-                  >
-                    <svg
-                      className="h-5 w-5 mr-2"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d={link.icon}
-                      />
-                    </svg>
-                    {link.name}
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
-            <div className="pt-4 pb-3 border-t border-white/30">
-              <div className="flex items-center px-5">
-                <div className="flex-shrink-0">
-                  <img
-                    className="h-10 w-10 rounded-full"
-                    src="https://ui-avatars.com/api/?name=User&background=random"
-                    alt=""
-                  />
-                </div>
-                <div className="ml-3">
-                  <div className="text-base font-medium text-gray-900">User</div>
-                  <div className="text-sm font-medium text-gray-500">user@example.com</div>
-                </div>
+                  Login / Sign Up
+                </motion.button>
               </div>
-              <div className="mt-3 px-2 space-y-1">
-                <motion.a
-                  whileHover={{ scale: 1.05 }}
-                  href="#"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-white/30"
-                >
-                  Your Profile
-                </motion.a>
-                <motion.a
-                  whileHover={{ scale: 1.05 }}
-                  href="#"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-white/30"
-                >
-                  Settings
-                </motion.a>
-                <motion.a
-                  whileHover={{ scale: 1.05 }}
-                  href="#"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-white/30"
-                >
-                  Sign out
-                </motion.a>
-              </div>
-            </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
